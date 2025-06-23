@@ -43,7 +43,7 @@ O retorno esperado da API ainda precisa ser escolhido:
 ]
 ```
 
-Além da sincronização dos dados do SGE com este sistema, existe também o protocolo para marcar presença na aula em que o usuário utiliza a catraca para participar, automaticamente. Se levarmos em conta que o usuário só pode se cadastrar em uma aula por vez (obrigatório para não haver conflitos), é possível identificar a aula em questão pelo horário de acesso e credencial do usuário.
+Além da sincronização dos dados do SGE com este sistema, existe também o protocolo para marcar presença na aula em que o usuário utiliza a catraca para participar, automaticamente. Se levarmos em conta que o usuário só pode se cadastrar em uma aula por período (obrigatório para não haver conflitos), é possível identificar a aula em questão pelo horário de acesso e credencial do usuário. Nessas circunstâncias, as presenças seriam enviadas em pacotes, periodicamente, para a API do SGE. O retorno da API deve mostrar se houve sucesso ou não, permitindo a geração de relatórios no futuro.
 
 ### Comunicação com a Catraca
 

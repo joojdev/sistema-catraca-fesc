@@ -7,11 +7,7 @@ async function main() {
 }
 
 main()
-    .then(async () => {
+    .catch(console.log)
+    .finally(async () => {
         await prisma.$disconnect();
-    })
-    .catch(async (error) => {
-        console.error(error);
-        await prisma.$disconnect();
-        process.exit(1);
     });

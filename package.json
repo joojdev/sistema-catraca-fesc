@@ -2,8 +2,9 @@
   "name": "sistema_catraca",
   "main": "src/index.ts",
   "scripts": {
-    "start": "ts-node src/index.ts",
-    "build": "tsc"
+    "dev": "ts-node src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js"
   },
   "author": "joojdev",
   "license": "ISC",
