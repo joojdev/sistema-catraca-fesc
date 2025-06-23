@@ -1,0 +1,44 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Tag {
+  credencial Int @id
+  aluno_id Int @unique
+  liberado_ate DateTime
+
+  horarios Horario[]
+  acessos Acesso[]
+
+  @@map("tag")
+}
+
+model Horario {
+  hora_inicio String
+  hora_fim String
+  credencial_tag Int
+
+  tag Tag @relation(fields: [credencial_tag], references: [credencial])
+
+  @@id([hora_inicio, hora_fim, credencial_tag])
+
+  @@map("horario")
+}
+
+model Acesso {
+  id Int @id @default(autoincrement())
+  data_hora DateTime @default(now())
+  credencial_tag Int
+  enviado Boolean
+  aceito Boolean
+
+  tag Tag @relation(fields: [credencial_tag], references: [credencial])
+
+  @@map("acesso")
+}
