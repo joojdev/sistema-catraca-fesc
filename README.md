@@ -47,4 +47,4 @@ Além da sincronização dos dados do SGE com este sistema, existe também o pro
 
 ### Comunicação com a Catraca
 
-A comunicação com a catraca será feita com o protocolo WebSocket. Essa parte da documentação está em andamento.
+A comunicação com a catraca será feita com o protocolo TCP. Essa parte da documentação está em andamento.

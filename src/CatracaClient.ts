@@ -29,9 +29,9 @@ class CatracaClient {
         return await this.tcpClient!.send(fullPayload);
     }
 
-    private async listen(): Promise<false | Response> {
+    // private async listen(): Promise<false | Response> {
         
-    }
+    // }
 }
 
 export default CatracaClient;
