@@ -1,90 +1,82 @@
 import net from 'node:net';
-import { once } from 'node:events';
+import { EventEmitter, once } from 'node:events';
 
-const RECV_TIMEOUT_MS = 30_500; // 30.5 segundos
+const RECV_TIMEOUT_MS = 30_500; // 30,5s
 const MSG_MAX_LEN = 4096;
 
-class TCPClient {
+type ConnectResult = void | '_TIMEOUT_' | string;
+
+export default class TCPClient extends EventEmitter {
     private socket: net.Socket | null = null;
 
-    constructor(private ip: string, private port: number) {}
+    constructor(private ip: string, private port: number) {
+        super();
+    }
 
-    async connect(): Promise<false | '_TIMEOUT_' | string> {
-        if (this.socket && !this.socket.destroyed) return false;
+    async connect(): Promise<ConnectResult> {
+        if (!this.socket && !this.socket!.destroyed) return;
 
         this.socket = net.createConnection({ host: this.ip, port: this.port });
 
         this.socket.setTimeout(RECV_TIMEOUT_MS);
 
+        this.socket.on('data', (chunk) => this.emit('data', chunk.slice(0, MSG_MAX_LEN)));
+        this.socket.on('timeout', () => this._handleTimeout());
+        this.socket.on('error', (error) => this._handleError(error));
+        this.socket.on('close', (hadError) => this.emit('close', hadError));
+
         try {
             await Promise.race([
                 once(this.socket, 'connect'),
-                once(this.socket, 'timeout').then(() => {
-                    throw Object.assign(new Error('_TIMEOUT_'), { code: 'ETIMEDOUT' });
-                }),
                 once(this.socket, 'error').then(([error]) => {
-                    throw error as NodeJS.ErrnoException;
-                })
-            ]);
-
-            return false;
-        } catch(error) {
-            this.socket.destroy();
-            this.socket = null;
-
-            if (
-                (error as NodeJS.ErrnoException).code == 'ETIMEDOUT' ||
-                (error as NodeJS.ErrnoException).code == 'EAGAIN'
-            ) {
-                return '_TIMEDOUT_';
-            }
-
-            return `socket_connect() failed: ${(error as Error).message}`
-        }
-    }
-
-    async listen(): Promise<Buffer | '_TIMEOUT_' | string> {
-        const error = await this.connect();
-        if (error) return error;
-
-        if (!this.socket) return 'inexistent socket.';
-
-        try {
-            const [data] = (await Promise.race([
-                once(this.socket, 'data'),
-                once(this.socket, 'timeout').then(() => {
-                    throw Object.assign(new Error('_TIMEOUT_'), { code: 'ETIMEDOUT' });
+                    throw error;
                 }),
-                once(this.socket, 'error').then(([error]) => { throw error; })
-            ])) as [Buffer];
-
-            return data.slice(0, MSG_MAX_LEN);
-        } catch(error) {
-            this.socket.destroy();
-            this.socket = null;
-            if ((error as any).code == 'ETIMEDOUT') return '_TIMEOUT_';
-            return `socket_read failed: ${(error as any).message}`;
+                once(this.socket, 'timeout').then(() => {
+                    throw new Error('_TIMEOUT_');
+                })
+            ])
+        } catch (error) {
+            this._cleanup();
+            if ((error as any).message == '_TIMEOUT_') return '_TIMEOUT_';
+            return `socket_connect() failed: ${(error as any).message}`;
         }
     }
 
     async send(payload: Buffer | string): Promise<false | string> {
-        const error = await this.connect();
-        if (error) return error;
-
+        const err = await this.connect();
+        if (err) return err;
         if (!this.socket) return 'inexistent socket.';
 
-        return new Promise<false | string>((resolve) => {
-            this.socket!.write(payload, (error) => {
+        return new Promise(resolve => {
+            this.socket!.write(payload, error => {
                 if (error) {
-                    this.socket!.destroy();
-                    this.socket = null;
+                    this._handleError(error);
                     resolve(`socket_send() failed: ${error.message}`);
                 } else {
                     resolve(false);
                 }
-            })
+            });
         });
     }
-}
 
-export default TCPClient;
+    close() {
+        this._cleanup();
+    }
+
+    private _handleTimeout() {
+        this.emit('timeout');
+        this._cleanup();
+    }
+
+    private _handleError(error: NodeJS.ErrnoException) {
+        this.emit('error', error)
+        this._cleanup();
+    }
+
+    private _cleanup() {
+        if (this.socket && !this.socket.destroyed) {
+            this.socket.destroy();
+        }
+        this.socket = null;
+    }
+}

@@ -3,7 +3,7 @@ import TCPClient from './TCPClient';
 class CatracaClient {
     private tcpClient: TCPClient | null = null;
 
-    constructor(private ip: string, private port: number) {
+    constructor(private ip: string, private port: number, private release_time: number) {
         this.tcpClient = new TCPClient(this.ip, this.port);
     }
 
@@ -28,10 +28,6 @@ class CatracaClient {
 
         return await this.tcpClient!.send(fullPayload);
     }
-
-    // private async listen(): Promise<false | Response> {
-        
-    // }
 }
 
 export default CatracaClient;
