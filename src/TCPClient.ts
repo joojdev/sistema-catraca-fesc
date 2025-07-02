@@ -14,7 +14,7 @@ export default class TCPClient extends EventEmitter {
     }
 
     async connect(): Promise<ConnectResult> {
-        if (!this.socket && !this.socket!.destroyed) return;
+        if (this.socket && !this.socket.destroyed) return;
 
         this.socket = net.createConnection({ host: this.ip, port: this.port });
 
@@ -27,7 +27,9 @@ export default class TCPClient extends EventEmitter {
 
         try {
             await Promise.race([
-                once(this.socket, 'connect'),
+                once(this.socket, 'connect').then(() => {
+                    this.emit('connect');
+                }),
                 once(this.socket, 'error').then(([error]) => {
                     throw error;
                 }),
