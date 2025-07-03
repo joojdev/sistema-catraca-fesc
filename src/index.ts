@@ -18,7 +18,6 @@ turnstile.on('connect', () => {
 turnstile.on('data', async (message: Message) => {
     const currentDate = new Date(new Date().toLocaleString('en-US', { timeZone: TIMEZONE }));
 
-    // console.log(message);
     if (message.command == 'REON') {
         const data: string[] = message.data.split(']');
 
@@ -42,35 +41,41 @@ turnstile.on('data', async (message: Message) => {
             if (!tag.released) return turnstile.denyAccess(message.index, tag.status);
 
             const classes = await prisma.class.findMany({
-                where: {
-                    tag: tag
-                }
+                where: { tag: tag },          // use a FK explícita
+                orderBy: { start: 'asc' }          // garante horário crescente
             });
 
             if (!classes.length) return turnstile.denyAccess(message.index);
 
+            let foundWindow = false;
+
             for (const classElement of classes) {
-                const [classHours, classMinutes] = classElement.start
-                    .split(':')
-                    .map((n) => parseInt(n, 10));
-
-                // Data/hora do início da aula
+                const [h, m] = classElement.start.split(':').map(Number);
                 const classStartDate = new Date(currentDate);
-                classStartDate.setHours(classHours, classMinutes, 0, 0);
+                classStartDate.setHours(h, m, 0, 0);
 
-                // Janela de permissão: [start - DELAY_TOLERANCE, start + DELAY_TOLERANCE]
-                const windowStart = new Date(classStartDate.getTime() - DELAY_TOLERANCE * 60 * 1000);
-                const windowEnd = new Date(classStartDate.getTime() + DELAY_TOLERANCE * 60 * 1000);
+                const windowStart = new Date(classStartDate.getTime() - DELAY_TOLERANCE * 60_000);
+                const windowEnd = new Date(classStartDate.getTime() + DELAY_TOLERANCE * 60_000);
 
-                console.log(`Janela: de ${windowStart.toLocaleTimeString()} até ${windowEnd.toLocaleTimeString()}`);
-
-                if (currentDate >= windowStart && currentDate <= windowEnd) {
-                    return allowAccess(turnstile, message.index, way, tag.status);
-                } else {
-                    // Se chegou antes demais ou muito atrasado
-                    return turnstile.denyAccess(message.index, "Fora da janela de entrada permitida");
+                if (currentDate > windowEnd) {
+                    continue;
                 }
+
+                if (currentDate < windowStart) {
+                    return turnstile.denyAccess(
+                        message.index,
+                        'VOLTE NO HORÁRIO DA AULA!'
+                    );
+                }
+
+                foundWindow = true;
+                return allowAccess(turnstile, message.index, way, tag.status);
             }
+
+            if (!foundWindow) {
+                return turnstile.denyAccess(message.index, 'ATRASADO(A)!');
+            }
+
         } else if (eventCode == 81) { // Giro da Catraca
 
         }
