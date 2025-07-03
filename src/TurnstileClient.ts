@@ -12,7 +12,7 @@ export type Message = {
     data: string
 };
 
-class CatracaClient extends EventEmitter {
+class TurnstileClient extends EventEmitter {
     private tcpClient: TCPClient | null = null;
 
     constructor(private ip: string, private port: number, private release_time: number = 40) {
@@ -137,13 +137,17 @@ class CatracaClient extends EventEmitter {
         return { ok: false, error: new Error(error) };
     }
 
-    async allowEntrance(index: number) {
-        this._send(index, `REON+00+6]${this.release_time}]PODE PASSAR]2`)
+    async allowEntry(index: number, message: string) {
+        this._send(index, `REON+00+6]${this.release_time}]${message}]2`)
     }
 
-    async denyAccess(index: number) {
-        this._send(index, `REON+00+30]${this.release_time}]ACESSO NEGADO]1`);
+    async allowExit(index: number, message: string) {
+        this._send(index, `REON+00+5]${this.release_time}]${message}]1`)
+    }
+
+    async denyAccess(index: number, message: string = "ACESSO NEGADO!") {
+        this._send(index, `REON+00+30]${this.release_time}]${message}]1`);
     }
 }
 
-export default CatracaClient;
+export default TurnstileClient;
