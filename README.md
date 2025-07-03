@@ -21,7 +21,10 @@ O retorno esperado da API ainda precisa ser escolhido:
     "horarios": [
       ["13:00", "14:30"],
       ["16:00", "17:00"]
-    ]
+    ],
+    "liberado": true,
+    "status": "BOA AULA! FULANO",
+    "admin": false
   }
 ]
 ```
@@ -36,7 +39,10 @@ O retorno esperado da API ainda precisa ser escolhido:
     "alunos": [
       {
         "aluno_id": 32132,
-        "credencial": 7849338479
+        "credencial": 7849338479,
+        "liberado": false,
+        "status": "ATESTADO VENCIDO!",
+        "admin": false
       }
     ]
   }
