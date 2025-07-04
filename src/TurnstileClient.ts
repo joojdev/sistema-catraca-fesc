@@ -15,7 +15,7 @@ export type Message = {
 class TurnstileClient extends EventEmitter {
     private tcpClient: TCPClient | null = null;
 
-    constructor(private ip: string, private port: number, private release_time: number = 40) {
+    constructor(private ip: string, private port: number, private release_time: number = 4) {
         super();
         this.tcpClient = new TCPClient(this.ip, this.port);
 

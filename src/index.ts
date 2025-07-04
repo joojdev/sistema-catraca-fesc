@@ -1,4 +1,4 @@
-import { PrismaClient } from '../generated/prisma';
+import { PrismaClient, Class, Tag, Access } from '../generated/prisma';
 import TurnstileClient, { Message } from './TurnstileClient';
 import dotenv from 'dotenv';
 dotenv.config();
@@ -15,6 +15,13 @@ turnstile.on('connect', () => {
     console.log('Connected!')
 });
 
+type Waiting = {
+    messageIndex: number,
+    tagId: number
+} | null;
+
+let waitingToTurn: Waiting = null;
+
 turnstile.on('data', async (message: Message) => {
     const currentDate = new Date(new Date().toLocaleString('en-US', { timeZone: TIMEZONE }));
 
@@ -30,18 +37,18 @@ turnstile.on('data', async (message: Message) => {
 
             const way: number = parseInt(data[5]);
 
-            const tag = await prisma.tag.findUnique({
+            const tag: Tag | null = await prisma.tag.findUnique({
                 where: {
                     credential: tagId
                 }
             });
 
             if (!tag) return turnstile.denyAccess(message.index);
-            if (tag.admin) return allowAccess(turnstile, message.index, way, tag.status);
+            if (tag.admin) return allowAccess(turnstile, message.index, way, tag.status, tagId);
             if (!tag.released) return turnstile.denyAccess(message.index, tag.status);
 
-            const classes = await prisma.class.findMany({
-                where: { tag: tag },          // use a FK explícita
+            const classes: Class[] = await prisma.class.findMany({
+                where: { tag_user_id: tag.user_id },          // use a FK explícita
                 orderBy: { start: 'asc' }          // garante horário crescente
             });
 
@@ -50,7 +57,9 @@ turnstile.on('data', async (message: Message) => {
             let foundWindow = false;
 
             for (const classElement of classes) {
-                const [h, m] = classElement.start.split(':').map(Number);
+                const rawStartMinutes = classElement.start;
+                const h = Math.floor(rawStartMinutes / 60);
+                const m = rawStartMinutes % 60;
                 const classStartDate = new Date(currentDate);
                 classStartDate.setHours(h, m, 0, 0);
 
@@ -69,25 +78,74 @@ turnstile.on('data', async (message: Message) => {
                 }
 
                 foundWindow = true;
-                return allowAccess(turnstile, message.index, way, tag.status);
+
+                // const accesses: Access[] = await prisma.access.findMany({
+                //     where: {
+                //         tag_user_id: tag.user_id,
+                //         timestamp: {
+                //             lte: windowEnd,
+                //             gte: windowStart
+                //         }
+                //     }
+                // });
+
+                // if (accesses.length) return turnstile.denyAccess(message.index, 'APENAS 1 ACESSO POR AULA!')
+                
+                const lastAccess: Access | null = await prisma.access.findFirst({
+                    where: {
+                        tag_user_id: tag.user_id,
+                    },
+                    orderBy: {
+                        timestamp: 'desc'
+                    }
+                });
+
+                if (lastAccess) {
+                    if (lastAccess.timestamp.getTime() + (DELAY_TOLERANCE * 2 * 60_000) > currentDate.getTime()) return turnstile.denyAccess(message.index, 'APENAS 1 ACESSO POR AULA!');
+                }
+
+                return allowAccess(turnstile, message.index, way, tag.status, tagId);
             }
 
             if (!foundWindow) {
                 return turnstile.denyAccess(message.index, 'ATRASADO(A)!');
-            }
-
+            }   
         } else if (eventCode == 81) { // Giro da Catraca
+            if (!waitingToTurn) return;
 
+            const tag: Tag | null = await prisma.tag.findUnique({
+                where: {
+                    credential: waitingToTurn.tagId
+                }
+            });
+
+            if (!tag || tag.admin) return;
+            
+            await prisma.access.create({
+                data: {
+                    tag_user_id: tag.user_id,
+                    timestamp: currentDate
+                }
+            });
+
+            waitingToTurn = null;
+        } else if (eventCode == 82) {
+            waitingToTurn = null;
         }
     }
 });
 
-function allowAccess(turnstile: TurnstileClient, index: number, way: number, status: string) {
+function allowAccess(turnstile: TurnstileClient, index: number, way: number, status: string, tagId: number) {
     if (way == 2) {
         turnstile.allowEntry(index, status);
     } else if (way == 3) {
         turnstile.allowExit(index, status);
     }
+
+    waitingToTurn = {
+        messageIndex: index,
+        tagId
+    };
 }
 
 turnstile.on('timeout', () => {
