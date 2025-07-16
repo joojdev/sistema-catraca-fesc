@@ -1,0 +1,23 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
+import { z } from 'zod';                         // validação de env vars
+import pino from 'pino';                         // logger estruturado
+
+// ------------------------- Environment Validation ------------------------
+const envSchema = z.object({
+    TURNSTILE_IP: z.ipv4().nonoptional(),
+    TURNSTILE_PORT: z.coerce.number().nonnegative().nonoptional(),
+    DELAY_TOLERANCE: z.coerce.number().nonnegative().nonoptional(),
+    TIMEZONE: z.string().nonempty(),
+    LOG_LEVEL: z.string().optional().default('info')
+});
+
+const _env = envSchema.safeParse(process.env);
+
+if (!_env.success) throw new Error('Invalid environment variables: ' + _env.error);
+
+// ------------------------- Logger ---------------------------------------
+export const logger = pino({ level: _env.data.LOG_LEVEL });
+
+export default _env.data;
