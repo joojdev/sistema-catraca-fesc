@@ -10,7 +10,10 @@ const envSchema = z.object({
     TURNSTILE_PORT: z.coerce.number().nonnegative().nonoptional(),
     DELAY_TOLERANCE: z.coerce.number().nonnegative().nonoptional(),
     TIMEZONE: z.string().nonempty(),
-    LOG_LEVEL: z.string().optional().default('info')
+    LOG_LEVEL: z.string().optional().default('info'),
+    API_URL: z.url(),
+    API_TOKEN: z.string().nonempty(),
+    CRON_PARAMETERS: z.string().nonempty()
 });
 
 const _env = envSchema.safeParse(process.env);
