@@ -12,20 +12,20 @@
   "license": "ISC",
   "description": "Software mediador entre a catraca da piscina da FESC e o sistema SGE, também da FESC.",
   "dependencies": {
-    "@prisma/client": "^6.12.0",
+    "@prisma/client": "^6.13.0",
     "axios": "^1.10.0",
     "dotenv": "^16.5.0",
     "ky": "^1.8.1",
+    "node-schedule": "^2.1.1",
     "pino": "^9.7.0",
     "zod": "^4.0.5"
   },
   "devDependencies": {
     "@types/axios": "^0.9.36",
-    "@types/node-cron": "^3.0.11",
+    "@types/node-schedule": "^2.1.8",
     "@types/pino": "^7.0.4",
-    "node-cron": "^4.2.1",
     "pino-pretty": "^13.0.0",
-    "prisma": "^6.12.0",
+    "prisma": "^6.13.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.3"
   }

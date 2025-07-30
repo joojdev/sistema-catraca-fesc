@@ -1,7 +1,7 @@
-import { PrismaClient, Tag } from '../../generated/prisma';
+import { PrismaClient } from '../../generated/prisma';
 import env, { logger } from '../env';
 import ky from 'ky';
-import cron from 'node-cron';
+import schedule from 'node-schedule';
 import { z } from 'zod';
 
 function timeToMinutes(time: string) {
@@ -42,14 +42,20 @@ async function main() {
   } catch (error) {
     logger.error('There was an error trying to connect to the database!');
     logger.error(error);
-  } finally {
     await prisma.$disconnect();
+    process.exit(1);
   }
+
+  process.on('SIGINT', async () => {
+    logger.info('Gracefully shutting down...');
+    await prisma.$disconnect();
+    process.exit(0);
+  });
 }
 
 async function startCron(prisma: PrismaClient) {
   logger.info('Started Cron Job!');
-  cron.schedule(env.CRON_PARAMETERS, async () => {
+  schedule.scheduleJob(env.CRON_PARAMETERS, async () => {
     const url = new URL(env.API_URL);
     url.pathname = '/services/catraca';
   
