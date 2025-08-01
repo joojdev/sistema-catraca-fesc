@@ -116,7 +116,15 @@ async function handleRFID(
   if (!tag.released) return turnstile.denyAccess(message.index, tag.status);
 
   // --------------------- Horário de Aula -----------------------------
-  const weekDays = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  const weekDays = [
+    "sunday",
+    "monday",
+    "tuesday",
+    "wednesday",
+    "thursday",
+    "friday",
+    "saturday",
+  ];
   const today = weekDays[currentDate.getDay()] as WeekDay;
 
   const classes: Class[] = await prisma.class.findMany({

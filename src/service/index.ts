@@ -4,7 +4,15 @@ import ky from "ky";
 import schedule from "node-schedule";
 import { z } from "zod";
 
-const weekDays: WeekDay[] = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+const weekDays: WeekDay[] = [
+  "sunday",
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "saturday",
+];
 
 function timeToMinutes(time: string) {
   const [hh, mm] = time.split(":").map((number) => parseInt(number));
@@ -19,7 +27,7 @@ const HourSchema = z
         /^(?:[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/,
         "The hour must be in the format H:MM or HH:MM!",
       ),
-    z.coerce.number().min(0).max(6)
+    z.coerce.number().min(0).max(6),
   ])
   .transform(
     ([start, weekDay]) =>
