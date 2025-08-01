@@ -1,8 +1,10 @@
-import { PrismaClient } from "../../generated/prisma";
+import { PrismaClient, WeekDay } from "../../generated/prisma";
 import env, { logger } from "../env";
 import ky from "ky";
 import schedule from "node-schedule";
 import { z } from "zod";
+
+const weekDays: WeekDay[] = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 
 function timeToMinutes(time: string) {
   const [hh, mm] = time.split(":").map((number) => parseInt(number));
@@ -17,19 +19,11 @@ const HourSchema = z
         /^(?:[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/,
         "The hour must be in the format H:MM or HH:MM!",
       ),
-    z
-      .string()
-      .regex(
-        /^(?:[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/,
-        "The hour must be in the format H:MM or HH:MM!",
-      ),
+    z.coerce.number().min(0).max(6)
   ])
-  .refine(([start, end]) => timeToMinutes(start) < timeToMinutes(end), {
-    message: "The start hour must be before the end hour.",
-  })
   .transform(
-    ([start, end]) =>
-      [timeToMinutes(start), timeToMinutes(end)] as [number, number],
+    ([start, weekDay]) =>
+      [timeToMinutes(start), weekDays[weekDay]] as [number, WeekDay],
   );
 
 const ApiResponseSchema = z.array(
@@ -123,11 +117,11 @@ async function startCron(prisma: PrismaClient) {
         });
       }
 
-      for (const time of user.horarios) {
+      for (const [start, weekDay] of user.horarios) {
         await prisma.class.create({
           data: {
-            start: time[0],
-            end: time[1],
+            start,
+            weekDay,
             tag_user_id: tag.user_id,
           },
         });

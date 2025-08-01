@@ -22,14 +22,24 @@ model Tag {
   @@index(credential)
 }
 
+enum WeekDay {
+  monday
+  tuesday
+  wednesday
+  thursday
+  friday
+  saturday
+  sunday
+}
+
 model Class {
   start Int
-  end Int
+  weekDay WeekDay
   tag_user_id Int
 
   tag Tag @relation(fields: [tag_user_id], references: [user_id])
 
-  @@id([start, end, tag_user_id])
+  @@id([start, weekDay, tag_user_id])
 
   @@map("class")
 }

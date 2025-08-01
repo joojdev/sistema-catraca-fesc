@@ -21,7 +21,7 @@
  */
 
 // ------------------------- Imports & Config ------------------------------
-import { PrismaClient, Class, Tag, Access } from "../generated/prisma";
+import { PrismaClient, Class, Tag, Access, WeekDay } from "../generated/prisma";
 import TurnstileClient, { Message } from "./TurnstileClient";
 import env, { logger } from "./env";
 
@@ -116,8 +116,11 @@ async function handleRFID(
   if (!tag.released) return turnstile.denyAccess(message.index, tag.status);
 
   // --------------------- Horário de Aula -----------------------------
+  const weekDays = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  const today = weekDays[currentDate.getDay()] as WeekDay;
+
   const classes: Class[] = await prisma.class.findMany({
-    where: { tag_user_id: tag.user_id },
+    where: { tag_user_id: tag.user_id, weekDay: today },
     orderBy: { start: "asc" },
   });
   if (!classes.length) return turnstile.denyAccess(message.index); // sem aulas cadastradas
