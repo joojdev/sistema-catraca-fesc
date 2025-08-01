@@ -14,19 +14,19 @@ cd sistema-catraca-fesc
 # Instalar dependências
 npm install
 
-# Configurar banco de dados
-npx prisma db push
-
 # Configurar variáveis de ambiente
 cp example.env .env
 nano .env
 
+# Configurar banco de dados
+npx prisma db push
+
 # Compilar Typescript para Javascript
 npm run build
 
-# Executar servidor e serviço
-npm run startServer
-# Em outro terminal...
+# Executar servidor que conversa com a catraca
+npm run start
+# Executar servidor que conversa com o SGE
 npm run startService
 ```
 
