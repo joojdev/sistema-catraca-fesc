@@ -24,6 +24,7 @@
 import { PrismaClient, Class, Tag, Access, WeekDay } from "../generated/prisma";
 import TurnstileClient, { Message } from "./TurnstileClient";
 import env, { logger } from "./env";
+import { Lockfile } from "./utils/Lockfile";
 
 // ------------------------- Constantes -----------------------------------
 const TURNSTILE_IP = env.TURNSTILE_IP;
@@ -44,6 +45,8 @@ type Waiting = {
 } | null;
 
 let waitingToTurn: Waiting = null; // nenhuma autorização pendente
+
+const lockfile = new Lockfile('import', 60);
 
 // ------------------------- Eventos do Driver ----------------------------
 turnstile.on("connect", () => {
@@ -101,6 +104,10 @@ async function handleRFID(
   if (Number.isNaN(tagId)) return; // pacote inválido
 
   const way: number = parseInt(data[5]); // 2‑entrada,3‑saída conforme firmware
+
+  if (lockfile.isLocked()) {
+    return turnstile.denyAccess(message.index, 'AGUARDE, SISTEMA EM ATUALIZACAO!')
+  }
 
   // ---------------------- Consulta Tag -------------------------------
   const tag: Tag | null = await prisma.tag.findUnique({

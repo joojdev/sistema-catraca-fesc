@@ -3,6 +3,9 @@ import env, { logger } from "../env";
 import ky from "ky";
 import schedule from "node-schedule";
 import { z } from "zod";
+import { Lockfile } from "../utils/Lockfile";
+
+const lockfile = new Lockfile("import", 60);
 
 const weekDays: WeekDay[] = [
   "sunday",
@@ -68,6 +71,9 @@ async function main() {
 async function startCron(prisma: PrismaClient) {
   logger.info("Started Cron Job!");
   schedule.scheduleJob(env.CRON_PARAMETERS, async () => {
+    logger.info("Starting import...");
+    lockfile.acquire();
+
     const url = new URL(env.API_URL);
     url.pathname = "/services/catraca";
 
@@ -135,6 +141,9 @@ async function startCron(prisma: PrismaClient) {
         });
       }
     }
+
+    logger.info("Finished importing!");
+    lockfile.release();
   });
 }
 

@@ -44,10 +44,17 @@ model Class {
   @@map("class")
 }
 
+enum Status {
+  granted
+  revoked
+  waiting
+}
+
 model Access {
   id Int @id @default(autoincrement())
   timestamp DateTime
   tag_user_id Int
+  status Status @default(value: waiting)
 
   tag Tag @relation(fields: [tag_user_id], references: [user_id])
 
