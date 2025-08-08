@@ -46,7 +46,7 @@ type Waiting = {
 
 let waitingToTurn: Waiting = null; // nenhuma autorização pendente
 
-const lockfile = new Lockfile('import', 60);
+const lockfile = new Lockfile("import", 60);
 
 // ------------------------- Eventos do Driver ----------------------------
 turnstile.on("connect", () => {
@@ -106,13 +106,17 @@ async function handleRFID(
   const way: number = parseInt(data[5]); // 2‑entrada,3‑saída conforme firmware
 
   if (lockfile.isLocked()) {
-    return turnstile.denyAccess(message.index, 'AGUARDE, SISTEMA EM ATUALIZACAO!')
+    return turnstile.denyAccess(
+      message.index,
+      "AGUARDE, SISTEMA EM ATUALIZACAO!",
+    );
   }
 
   // ---------------------- Consulta Tag -------------------------------
   const tag: Tag | null = await prisma.tag.findUnique({
     where: { credential: tagId },
   });
+
   if (!tag) return turnstile.denyAccess(message.index); // cartão desconhecido
 
   // Admins ignoram todas as regras
@@ -138,6 +142,7 @@ async function handleRFID(
     where: { tag_user_id: tag.user_id, weekDay: today },
     orderBy: { start: "asc" },
   });
+
   if (!classes.length) return turnstile.denyAccess(message.index); // sem aulas cadastradas
 
   let foundWindow = false;
@@ -146,6 +151,16 @@ async function handleRFID(
     const rawStartMinutes = classElement.start; // minutos após 00:00
     const h = Math.floor(rawStartMinutes / 60);
     const m = rawStartMinutes % 60;
+
+    // const [year, month, day] = currentDate
+    //   .toLocaleDateString("en-CA", { timeZone: TIMEZONE })
+    //   .split("-")
+    //   .map(Number);
+
+    // const classStartDate = new Date(
+    //   Date.UTC(year, month - 1, day, h, m)
+    // );
+
     const classStartDate = new Date(currentDate);
     classStartDate.setHours(h, m, 0, 0);
 
