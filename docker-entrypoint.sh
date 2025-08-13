@@ -1,8 +1,10 @@
 #!/bin/sh
 set -e
 
-# Load environment variables from .env
-export $(grep -v '^#' .env | xargs)
+# Auto-export all sourced variables
+set -a
+. .env
+set +a
 
 # Apply migrations (creates SQLite DB if missing)
 npx prisma migrate deploy
