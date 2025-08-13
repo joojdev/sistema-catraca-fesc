@@ -5,4 +5,4 @@ set -e
 npx prisma migrate deploy
 
 # Start both scripts with PM2
-pm2-runtime start ecosystem.config.js
+npx pm2-runtime start ecosystem.config.js
