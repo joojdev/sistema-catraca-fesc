@@ -25,6 +25,7 @@ import { PrismaClient, Class, Tag, Access, WeekDay } from "../generated/prisma";
 import TurnstileClient, { Message } from "./TurnstileClient";
 import env, { logger } from "./env";
 import { Lockfile } from "./utils/Lockfile";
+import text from "./utils/i18n";
 
 // ------------------------- Constantes -----------------------------------
 const TURNSTILE_IP = env.TURNSTILE_IP;
@@ -34,7 +35,7 @@ const TIMEZONE = env.TIMEZONE;
 
 // ------------------------- Instâncias -----------------------------------
 const prisma = new PrismaClient();
-const turnstile = new TurnstileClient(TURNSTILE_IP, TURNSTILE_PORT, 40); // 40 s de open‑gate
+const turnstile = new TurnstileClient(TURNSTILE_IP, TURNSTILE_PORT, 4); // 40 s de open‑gate
 
 // ------------------------- Tipos & Estado --------------------------------
 // Estrutura para guardar o cartão autorizado até o giro da catraca
@@ -106,10 +107,7 @@ async function handleRFID(
   const way: number = parseInt(data[5]); // 2‑entrada,3‑saída conforme firmware
 
   if (lockfile.isLocked()) {
-    return turnstile.denyAccess(
-      message.index,
-      "AGUARDE, SISTEMA EM ATUALIZACAO!",
-    );
+    return turnstile.denyAccess(message.index, text.waitSystemIsUpdating);
   }
 
   // ---------------------- Consulta Tag -------------------------------
@@ -177,7 +175,7 @@ async function handleRFID(
     }
 
     if (currentDate < windowStart) {
-      return turnstile.denyAccess(message.index, "VOLTE NO HORÁRIO DA AULA!");
+      return turnstile.denyAccess(message.index, text.outOfHour);
     }
 
     foundWindow = true; // dentro do horário permitido
@@ -192,7 +190,7 @@ async function handleRFID(
       const blockingUntil =
         lastAccess.timestamp.getTime() + DELAY_TOLERANCE * 2 * 60_000;
       if (blockingUntil > currentDate.getTime()) {
-        return turnstile.denyAccess(message.index, "APENAS 1 ACESSO POR AULA!");
+        return turnstile.denyAccess(message.index, text.onlyOneAccess);
       }
     }
 
@@ -201,13 +199,13 @@ async function handleRFID(
   }
 
   if (!foundWindow) {
-    return turnstile.denyAccess(message.index, "ATRASADO(A)!");
+    return turnstile.denyAccess(message.index, text.outOfHour);
   }
 }
 
 async function handleTurn(
   _eventCode: number,
-  message: Message,
+  _message: Message,
   currentDate: Date,
 ) {
   if (!waitingToTurn) return; // nada pendente
