@@ -1,0 +1,7 @@
+services:
+  app:
+    build: .
+    env_file: .env
+    volumes:
+      - ./prisma/dev.db:/app/prisma/dev.db
+    restart: unless-stopped
