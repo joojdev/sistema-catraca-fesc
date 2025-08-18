@@ -11,15 +11,25 @@ Este sistema permitirá a administração do acesso de pessoas na piscina da FES
 git clone https://github.com/joojdev/sistema-catraca-fesc.git
 cd sistema-catraca-fesc
 
+# Configurar variáveis de ambiente
+cp example.env .env
+nano .env
+
+# Fazer build da imagem e escalar container
 docker compose up -d --build
 ```
 
-## Funcionamento Aprofundado
+Na mesma máquina do servidor, se você enviar um request GET para `http://localhost:3000/trigger-import`, as importações e exportações são executadas.
 
-### Comunicação com SGE
+### Como desenvolver
 
-Documentação em andamento...
+```bash
+# Instalar dependências
+npm install
 
-### Comunicação com a Catraca
+# Iniciar servidor de conexão com a catraca para desenvolvimento
+npm run dev
 
-A comunicação com a catraca será feita com o protocolo TCP. Essa parte da documentação está em andamento.
+# Iniciar serviço de consulta de alunos e envio de presenças da aula para desenvolvimento
+npm run devService
+```
