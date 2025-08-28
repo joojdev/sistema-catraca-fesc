@@ -1,0 +1,9 @@
+{
+  "extends": ["@rocketseat/eslint-config/node"],
+  "rules": {
+    "@typescript-eslint/no-duplicate-enum-values": "off",
+    "camelcase": "off",
+    "no-useless-constructor": "off",
+    "no-unused-vars": "off"
+  }
+}

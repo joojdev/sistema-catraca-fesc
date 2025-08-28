@@ -1,6 +1,5 @@
 generator client {
   provider = "prisma-client-js"
-  output   = "../generated/prisma"
 }
 
 datasource db {
@@ -9,7 +8,7 @@ datasource db {
 }
 
 model Tag {
-  user_id Int @id
+  userId Int @id
   credential Int @unique
   released Boolean
   status String
@@ -35,11 +34,11 @@ enum WeekDay {
 model Class {
   start Int
   weekDay WeekDay
-  tag_user_id Int
+  tagUserId Int
 
-  tag Tag @relation(fields: [tag_user_id], references: [user_id])
+  tag Tag @relation(fields: [tagUserId], references: [userId])
 
-  @@id([start, weekDay, tag_user_id])
+  @@id([start, weekDay, tagUserId])
 
   @@map("class")
 }
@@ -51,12 +50,12 @@ enum Status {
 }
 
 model Access {
-  id Int @id @default(autoincrement())
+  id String @id 
   timestamp DateTime
-  tag_user_id Int
+  tagUserId Int
   status Status @default(value: waiting)
 
-  tag Tag @relation(fields: [tag_user_id], references: [user_id])
+  tag Tag @relation(fields: [tagUserId], references: [userId])
 
   @@map("access")
 }

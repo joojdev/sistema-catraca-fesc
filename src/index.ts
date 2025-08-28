@@ -1,206 +1,166 @@
-/**
- * Access‑control service
- * ----------------------
- * Escuta eventos da catraca via `TurnstileClient`, valida o cartão RFID
- * (Tag) contra regras de horário de aula e registra o acesso no banco
- * através do Prisma.
- *
- * Esta versão mantém **toda a lógica original** e acrescenta:
- *   • Validação de variáveis de ambiente com Zod (fail‑fast)
- *   • Logging estruturado com Pino (JSON compatível com observabilidade)
- *   • Encerramento gracioso (SIGINT/SIGTERM) fechando conexões
- *   • Pequenas refatorações semânticas (const CONFIG)
- *
- * Variáveis de ambiente esperadas (todas obrigatórias):
- *   TURNSTILE_IP      → IP da controladora
- *   TURNSTILE_PORT    → porta TCP
- *   DELAY_TOLERANCE   → tolerância, em minutos, antes/depois do início da aula
- *   TIMEZONE          → fuso horário IANA (ex.: 'America/Sao_Paulo') usado
- *                        para converter datas na lógica de horário de aula.
- *   LOG_LEVEL         → nível do logger (debug|info|warn|error) – opcional
- */
+import TurnstileClient, { Message } from '@/TurnstileClient'
+import env, { logger } from '@/env'
+import { Lockfile } from '@/utils/Lockfile'
+import text from '@/utils/i18n'
+import TagService from '@/application/services/tag.service'
+import TagPrismaRepository from '@/database/prisma/repositories/tag.prisma.repository'
+import ClassPrismaRepository from '@/database/prisma/repositories/class.prisma.repository'
+import ClassService from '@/application/services/class.service'
+import AccessPrismaRepository from './database/prisma/repositories/access.prisma.repository'
+import AccessService from '@/application/services/access.service'
+import { WeekDay } from '@/domain/enum/week-day'
 
-// ------------------------- Imports & Config ------------------------------
-import { PrismaClient, Class, Tag, Access, WeekDay } from "../generated/prisma";
-import TurnstileClient, { Message } from "./TurnstileClient";
-import env, { logger } from "./env";
-import { Lockfile } from "./utils/Lockfile";
-import text from "./utils/i18n";
+const TURNSTILE_IP = env.TURNSTILE_IP
+const TURNSTILE_PORT = env.TURNSTILE_PORT
+const DELAY_TOLERANCE = env.DELAY_TOLERANCE
+const TIMEZONE = env.TIMEZONE
 
-// ------------------------- Constantes -----------------------------------
-const TURNSTILE_IP = env.TURNSTILE_IP;
-const TURNSTILE_PORT = env.TURNSTILE_PORT;
-const DELAY_TOLERANCE = env.DELAY_TOLERANCE;
-const TIMEZONE = env.TIMEZONE;
+const turnstile = new TurnstileClient(TURNSTILE_IP, TURNSTILE_PORT, 4)
 
-// ------------------------- Instâncias -----------------------------------
-const prisma = new PrismaClient();
-const turnstile = new TurnstileClient(TURNSTILE_IP, TURNSTILE_PORT, 4); // 40 s de open‑gate
+const tagRepository = new TagPrismaRepository()
+const tagService = new TagService(tagRepository)
 
-// ------------------------- Tipos & Estado --------------------------------
-// Estrutura para guardar o cartão autorizado até o giro da catraca
-// (índice da mensagem + id do cartão)
+const classRepository = new ClassPrismaRepository()
+const classService = new ClassService(classRepository)
+
+const accessRepository = new AccessPrismaRepository()
+const accessService = new AccessService(accessRepository)
+
 type Waiting = {
-  messageIndex: number;
-  tagId: number;
-} | null;
+  messageIndex: number
+  tagId: number
+} | null
 
-let waitingToTurn: Waiting = null; // nenhuma autorização pendente
+let waitingToTurn: Waiting = null
 
-const lockfile = new Lockfile("import", 60);
+const lockfile = new Lockfile('import', 60)
 
-// ------------------------- Eventos do Driver ----------------------------
-turnstile.on("connect", () => {
-  logger.info("Turnstile connected");
-});
+turnstile.on('connect', () => {
+  logger.info('Turnstile connected')
+})
 
-turnstile.on("data", async (message: Message) => {
-  // Data/hora local considerando o fuso IANA
+turnstile.on('data', async (message: Message) => {
   const currentDate = new Date(
-    new Date().toLocaleString("en-US", { timeZone: TIMEZONE }),
-  );
+    new Date().toLocaleString('en-US', { timeZone: TIMEZONE }),
+  )
 
-  if (message.command !== "REON") return; // ignorar msgs irrelevantes
+  if (message.command !== 'REON') return
 
-  // ---------------------- Decodifica payload --------------------------
-  const data: string[] = message.data.split("]");
-  const eventCode: number = parseInt(data[0]); // tipo do evento
+  const data: string[] = message.data.split(']')
+  const eventCode: number = parseInt(data[0])
 
   try {
     if (eventCode === 0) {
-      await handleRFID(eventCode, data, message, currentDate);
+      await handleRFID(eventCode, data, message, currentDate)
     } else if (eventCode === 81) {
-      await handleTurn(eventCode, message, currentDate);
+      await handleTurn(eventCode, message, currentDate)
     } else if (eventCode === 82) {
-      waitingToTurn = null; // cancelamento‑reset
+      waitingToTurn = null
     }
   } catch (err) {
-    logger.error({ err }, "Unhandled error processing message");
+    logger.error({ err }, 'Unhandled error processing message')
   }
-});
+})
 
-turnstile.on("timeout", () => {
-  logger.error("Turnstile timeout");
-});
+turnstile.on('timeout', () => {
+  logger.error('Turnstile timeout')
+})
 
-turnstile.on("error", (error) => {
-  logger.error({ err: error }, "Turnstile driver error");
-});
+turnstile.on('error', (error) => {
+  logger.error({ err: error }, 'Turnstile driver error')
+})
 
-turnstile.on("close", (hadError) => {
+turnstile.on('close', (hadError) => {
   logger.warn(
-    `Connection closed ${hadError ? "with" : "without"} error(s). Attempting reconnect…`,
-  );
-  turnstile.connect(); // tenta reconectar indefinidamente
-});
+    `Connection closed ${hadError ? 'with' : 'without'} error(s). Attempting reconnect…`,
+  )
+  turnstile.connect()
+})
 
-// ------------------------- Handlers de Eventos --------------------------
 async function handleRFID(
   _eventCode: number,
   data: string[],
   message: Message,
   currentDate: Date,
 ) {
-  const tagId: number = parseInt(data[1]); // credential numérico
-  if (Number.isNaN(tagId)) return; // pacote inválido
+  const tagId: number = parseInt(data[1])
+  if (Number.isNaN(tagId)) return
 
-  const way: number = parseInt(data[5]); // 2‑entrada,3‑saída conforme firmware
+  const way: number = parseInt(data[5])
 
   if (lockfile.isLocked()) {
-    return turnstile.denyAccess(message.index, text.waitSystemIsUpdating);
+    return turnstile.denyAccess(message.index, text.waitSystemIsUpdating)
   }
 
-  // ---------------------- Consulta Tag -------------------------------
-  const tag: Tag | null = await prisma.tag.findUnique({
-    where: { credential: tagId },
-  });
+  const tag = await tagService.getByCredential({
+    credential: tagId,
+  })
 
-  if (!tag) return turnstile.denyAccess(message.index); // cartão desconhecido
+  if (!tag) return turnstile.denyAccess(message.index)
 
-  // Admins ignoram todas as regras
   if (tag.admin)
-    return allowAccess(turnstile, message.index, way, tag.status, tagId);
+    return allowAccess(turnstile, message.index, way, tag.status, tagId)
 
-  // Cartão bloqueado
-  if (!tag.released) return turnstile.denyAccess(message.index, tag.status);
+  if (!tag.released) return turnstile.denyAccess(message.index, tag.status)
 
-  // --------------------- Horário de Aula -----------------------------
-  const weekDays = [
-    "sunday",
-    "monday",
-    "tuesday",
-    "wednesday",
-    "thursday",
-    "friday",
-    "saturday",
-  ];
-  const today = weekDays[currentDate.getDay()] as WeekDay;
+  const lastAccess = await accessService.getLastAccessFromUserId({
+    userId: tag.userId,
+  })
 
-  const classes: Class[] = await prisma.class.findMany({
-    where: { tag_user_id: tag.user_id, weekDay: today },
-    orderBy: { start: "asc" },
-  });
+  if (lastAccess) {
+    const blockingUntil =
+      lastAccess.timestamp.getTime() + DELAY_TOLERANCE * 2 * 60_000
+    if (blockingUntil > currentDate.getTime()) {
+      return turnstile.denyAccess(message.index, text.onlyOneAccess)
+    }
+  }
 
-  if (!classes.length) return turnstile.denyAccess(message.index); // sem aulas cadastradas
+  const weekDays: WeekDay[] = [
+    WeekDay.sunday,
+    WeekDay.monday,
+    WeekDay.tuesday,
+    WeekDay.wednesday,
+    WeekDay.thursday,
+    WeekDay.friday,
+    WeekDay.saturday,
+  ]
 
-  let foundWindow = false;
+  const today = weekDays[currentDate.getDay()]
+
+  const classes = await classService.getClassesFromUserIdAndWeekDay({
+    userId: tag.userId,
+    weekDay: today,
+  })
+
+  if (!classes.length) return turnstile.denyAccess(message.index)
 
   for (const classElement of classes) {
-    const rawStartMinutes = classElement.start; // minutos após 00:00
-    const h = Math.floor(rawStartMinutes / 60);
-    const m = rawStartMinutes % 60;
+    const rawStartMinutes = classElement.start
+    const h = Math.floor(rawStartMinutes / 60)
+    const m = rawStartMinutes % 60
 
-    // const [year, month, day] = currentDate
-    //   .toLocaleDateString("en-CA", { timeZone: TIMEZONE })
-    //   .split("-")
-    //   .map(Number);
+    const classStartDate = new Date(currentDate)
+    classStartDate.setHours(h, m, 0, 0)
 
-    // const classStartDate = new Date(
-    //   Date.UTC(year, month - 1, day, h, m)
-    // );
-
-    const classStartDate = new Date(currentDate);
-    classStartDate.setHours(h, m, 0, 0);
-
-    // Janela permitida: [start‑tol, start+tol]
     const windowStart = new Date(
       classStartDate.getTime() - DELAY_TOLERANCE * 60_000,
-    );
+    )
     const windowEnd = new Date(
       classStartDate.getTime() + DELAY_TOLERANCE * 60_000,
-    );
+    )
 
     if (currentDate > windowEnd) {
-      continue; // muito depois → tenta próxima aula
+      continue
     }
 
     if (currentDate < windowStart) {
-      return turnstile.denyAccess(message.index, text.outOfHour);
+      continue
     }
 
-    foundWindow = true; // dentro do horário permitido
-
-    // ----------------‑‑ Restrições de múltiplos acessos -------------
-    const lastAccess: Access | null = await prisma.access.findFirst({
-      where: { tag_user_id: tag.user_id },
-      orderBy: { timestamp: "desc" },
-    });
-
-    if (lastAccess) {
-      const blockingUntil =
-        lastAccess.timestamp.getTime() + DELAY_TOLERANCE * 2 * 60_000;
-      if (blockingUntil > currentDate.getTime()) {
-        return turnstile.denyAccess(message.index, text.onlyOneAccess);
-      }
-    }
-
-    // Tudo certo → libera catraca
-    return allowAccess(turnstile, message.index, way, tag.status, tagId);
+    return allowAccess(turnstile, message.index, way, tag.status, tagId)
   }
 
-  if (!foundWindow) {
-    return turnstile.denyAccess(message.index, text.outOfHour);
-  }
+  return turnstile.denyAccess(message.index, text.outOfHour)
 }
 
 async function handleTurn(
@@ -208,24 +168,22 @@ async function handleTurn(
   _message: Message,
   currentDate: Date,
 ) {
-  if (!waitingToTurn) return; // nada pendente
+  if (!waitingToTurn) return
 
-  const tag: Tag | null = await prisma.tag.findUnique({
-    where: { credential: waitingToTurn.tagId },
-  });
-  if (!tag || tag.admin) return; // admin não registra
+  const tag = await tagService.getByCredential({
+    credential: waitingToTurn.tagId,
+  })
 
-  await prisma.access.create({
-    data: {
-      tag_user_id: tag.user_id,
-      timestamp: currentDate,
-    },
-  });
+  if (!tag || tag.admin) return
 
-  waitingToTurn = null; // limpo até próxima leitura
+  await accessService.create({
+    userId: tag.userId,
+    timestamp: currentDate,
+  })
+
+  waitingToTurn = null
 }
 
-// ------------------------- Helper: libera catraca ------------------------
 function allowAccess(
   turnstile: TurnstileClient,
   index: number,
@@ -234,42 +192,37 @@ function allowAccess(
   tagId: number,
 ) {
   if (way === 2) {
-    turnstile.allowEntry(index, status);
+    turnstile.allowEntry(index, status)
   } else if (way === 3) {
-    turnstile.allowExit(index, status);
+    turnstile.allowExit(index, status)
   }
 
-  // Guarda info para quando sensor de giro disparar
   waitingToTurn = {
     messageIndex: index,
     tagId,
-  };
+  }
 }
 
-// ------------------------- Loop principal --------------------------------
 const delay = async (ms: number) =>
-  new Promise((resolve) => setTimeout(resolve, ms));
+  new Promise((resolve) => setTimeout(resolve, ms))
 
 async function main() {
   while (true) {
-    await delay(100); // mantém processo vivo; lógica é event‑driven
+    await delay(100)
   }
 }
 
-// ------------------------- Shutdown Gracioso -----------------------------
 async function shutdown(signal: string) {
   try {
-    logger.info(`Received ${signal}. Shutting down gracefully…`);
-    await prisma.$disconnect();
-    process.exit(0);
+    logger.info(`Received ${signal}. Shutting down gracefully…`)
+    process.exit(0)
   } catch (err) {
-    logger.error({ err }, "Error during shutdown");
-    process.exit(1);
+    logger.error({ err }, 'Error during shutdown')
+    process.exit(1)
   }
 }
 
-process.on("SIGINT", shutdown);
-process.on("SIGTERM", shutdown);
+process.on('SIGINT', shutdown)
+process.on('SIGTERM', shutdown)
 
-// ------------------------- Bootstrap -------------------------------------
-main().catch((err) => logger.error({ err }, "Fatal error in main loop"));
+main().catch((err) => logger.error({ err }, 'Fatal error in main loop'))

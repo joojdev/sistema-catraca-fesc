@@ -2,11 +2,11 @@
   "name": "sistema_catraca",
   "scripts": {
     "dev": "tsx watch src/index.js | pino-pretty",
-    "devService": "tsx watch src/service/index.js | pino-pretty",
+    "devService": "tsx watch src/fetchTask/index.js | pino-pretty",
     "build": "tsc",
     "start": "node dist/index.js",
-    "startService": "node dist/service/index.js",
-    "format": "prettier . --write"
+    "startService": "node dist/fetchTask/index.js",
+    "lint": "eslint ."
   },
   "author": "joojdev",
   "description": "Software mediador entre a catraca da piscina da FESC e o sistema SGE, também da FESC.",
@@ -18,16 +18,22 @@
     "ky": "^1.8.1",
     "node-schedule": "^2.1.1",
     "pino": "^9.7.0",
+    "uuid": "^11.1.0",
     "zod": "^4.0.5"
   },
   "devDependencies": {
+    "@rocketseat/eslint-config": "^2.2.2",
     "@types/axios": "^0.9.36",
     "@types/express": "^5.0.3",
+    "@types/node": "^24.3.0",
     "@types/node-schedule": "^2.1.8",
     "@types/pino": "^7.0.4",
+    "@types/uuid": "^10.0.0",
+    "@typescript-eslint/eslint-plugin": "8.39.1",
+    "@typescript-eslint/parser": "8.39.1",
+    "eslint": "8.57.1",
     "pino-pretty": "^13.0.0",
     "pm2": "^6.0.8",
-    "prettier": "^3.6.2",
     "prisma": "^6.14.0",
     "tsx": "^4.20.3",
     "typescript": "^5.8.3"
