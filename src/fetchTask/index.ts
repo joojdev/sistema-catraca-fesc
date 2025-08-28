@@ -1,6 +1,6 @@
 import schedule from 'node-schedule'
-import env, { logger } from '@/env'
-import runImport from '@/utils/importJob'
+import env, { logger } from '../env'
+import runImport from '../utils/importJob'
 import express from 'express'
 
 async function main() {

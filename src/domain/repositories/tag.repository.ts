@@ -1,4 +1,4 @@
-import Tag from '@/domain/entities/tag.entity'
+import Tag from '../entities/tag.entity'
 
 export interface CreateTagInput {
   userId: number

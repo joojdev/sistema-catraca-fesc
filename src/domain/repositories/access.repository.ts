@@ -1,5 +1,5 @@
-import Access from '@/domain/entities/access.entity'
-import { Status } from '@/domain/enum/status'
+import Access from '../entities/access.entity'
+import { Status } from '../enum/status'
 
 export interface CreateAccessInput {
   timestamp: Date

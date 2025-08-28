@@ -1,7 +1,7 @@
 import TagRepository, {
   CreateTagInput,
   CredentialInput,
-} from '@/domain/repositories/tag.repository'
+} from '../../domain/repositories/tag.repository'
 
 export default class TagService implements TagRepository {
   constructor(private repo: TagRepository) {}

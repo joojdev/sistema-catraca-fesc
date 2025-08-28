@@ -1,8 +1,8 @@
 import TagRepository, {
   CreateTagInput,
   CredentialInput,
-} from '@/domain/repositories/tag.repository'
-import { prisma } from '@/database/prisma'
+} from '../../../domain/repositories/tag.repository'
+import { prisma } from '..'
 
 export default class TagPrismaRepository implements TagRepository {
   async createOrUpdate(data: CreateTagInput) {

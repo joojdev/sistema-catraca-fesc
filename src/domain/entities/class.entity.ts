@@ -1,4 +1,4 @@
-import { WeekDay } from '@/domain/enum/week-day'
+import { WeekDay } from '../enum/week-day'
 
 export default class Class {
   constructor(

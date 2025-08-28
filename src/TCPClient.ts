@@ -15,7 +15,7 @@ import net from 'node:net'
 import { EventEmitter, once } from 'node:events'
 
 // Tempo máximo (ms) sem receber dados antes de considerar timeout
-const RECV_TIMEOUT_MS = 30_500 // 30,5 s
+const RECV_TIMEOUT_MS = 30_500 // 30,5s
 // Tamanho máximo de mensagem a ser propagada para listeners
 const MSG_MAX_LEN = 4096
 
@@ -84,7 +84,7 @@ export default class TCPClient extends EventEmitter {
     } catch (error) {
       // Libera recursos e propaga erro
       this._cleanup()
-      if ((error as any).message == '_TIMEOUT_') return '_TIMEOUT_'
+      if ((error as any).message === '_TIMEOUT_') return '_TIMEOUT_'
       return `socket_connect() failed: ${(error as any).message}`
     }
   }

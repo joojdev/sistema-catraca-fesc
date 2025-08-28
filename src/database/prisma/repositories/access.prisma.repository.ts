@@ -2,11 +2,11 @@ import AccessRepository, {
   CreateAccessInput,
   GetLastAccessInput,
   UpdateAccessStatusInput,
-} from '@/domain/repositories/access.repository'
-import { prisma } from '@/database/prisma'
+} from '../../../domain/repositories/access.repository'
+import { prisma } from '..'
 import { v4 } from 'uuid'
-import Access from '@/domain/entities/access.entity'
-import { Status } from '@/domain/enum/status'
+import Access from '../../../domain/entities/access.entity'
+import { Status } from '../../../domain/enum/status'
 
 export default class AccessPrismaRepository implements AccessRepository {
   async create(data: CreateAccessInput) {

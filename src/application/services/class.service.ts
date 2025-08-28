@@ -2,7 +2,7 @@ import ClassRepository, {
   CreateClassInput,
   DeleteClassesInput,
   GetClassesInput,
-} from '@/domain/repositories/class.repository'
+} from '../../domain/repositories/class.repository'
 
 export default class ClassService implements ClassRepository {
   constructor(private repo: ClassRepository) {}

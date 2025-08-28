@@ -1,5 +1,5 @@
-import Class from '@/domain/entities/class.entity'
-import { WeekDay } from '@/domain/enum/week-day'
+import Class from '../entities/class.entity'
+import { WeekDay } from '../enum/week-day'
 
 export interface CreateClassInput {
   start: number
