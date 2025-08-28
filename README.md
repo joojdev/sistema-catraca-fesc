@@ -20,6 +20,18 @@ docker compose up -d --build
 ```
 
 Na mesma máquina do servidor, se você enviar um request GET para `http://localhost:3000/trigger-import`, as importações e exportações são executadas.
+A rota `/erase-everything` apaga todas as informações do banco de dados.
+A rota `/list-accesses` retorna um JSON com os acessos.
+A rota `/list-classes` retorna um JSON com as aulas.
+A rota `/list-tags` retorna um JSON com as tags.
+
+Todas essas rotas só podem ser acessadas com o método GET e o corpo do request dessa seguinte forma:
+```json
+{
+  "Token": "senha"
+}
+```
+Sendo `senha` a string colocada no campo `ADMIN_TOKEN` no arquivo `.env`
 
 ### Como desenvolver
 

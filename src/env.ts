@@ -14,6 +14,7 @@ const envSchema = z.object({
   API_URL: z.url(),
   API_TOKEN: z.string().nonempty(),
   CRON_PARAMETERS: z.string().nonempty(),
+  ADMIN_TOKEN: z.string().nonempty(),
 })
 
 const _env = envSchema.safeParse(process.env)

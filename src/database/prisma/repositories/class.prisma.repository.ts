@@ -44,4 +44,12 @@ export default class ClassPrismaRepository implements ClassRepository {
       },
     })) as Class[]
   }
+
+  async getAll() {
+    return (await prisma.class.findMany()) as Class[]
+  }
+
+  async eraseAll() {
+    await prisma.class.deleteMany()
+  }
 }

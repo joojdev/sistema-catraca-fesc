@@ -18,4 +18,12 @@ export default class ClassService implements ClassRepository {
   async getClassesFromUserIdAndWeekDay(data: GetClassesInput) {
     return await this.repo.getClassesFromUserIdAndWeekDay(data)
   }
+
+  async getAll() {
+    return await this.repo.getAll()
+  }
+
+  async eraseAll() {
+    await this.repo.eraseAll()
+  }
 }

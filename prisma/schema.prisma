@@ -36,7 +36,7 @@ model Class {
   weekDay WeekDay
   tagUserId Int
 
-  tag Tag @relation(fields: [tagUserId], references: [userId])
+  tag Tag @relation(fields: [tagUserId], references: [userId], onDelete: Cascade)
 
   @@id([start, weekDay, tagUserId])
 
@@ -55,7 +55,7 @@ model Access {
   tagUserId Int
   status Status @default(value: waiting)
 
-  tag Tag @relation(fields: [tagUserId], references: [userId])
+  tag Tag @relation(fields: [tagUserId], references: [userId], onDelete: Cascade)
 
   @@map("access")
 }

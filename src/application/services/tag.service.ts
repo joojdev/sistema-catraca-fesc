@@ -13,4 +13,12 @@ export default class TagService implements TagRepository {
   async getByCredential(data: CredentialInput) {
     return await this.repo.getByCredential(data)
   }
+
+  async eraseAll() {
+    await this.repo.eraseAll()
+  }
+
+  async getAll() {
+    return await this.repo.getAll()
+  }
 }

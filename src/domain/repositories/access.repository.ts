@@ -20,4 +20,6 @@ export default interface AccessRepository {
   getWaitingAccesses(): Promise<Access[]>
   updateStatus(data: UpdateAccessStatusInput): Promise<void>
   getLastAccessFromUserId(data: GetLastAccessInput): Promise<Access | null>
+  getAll(): Promise<Access[]>
+  eraseAll(): Promise<void>
 }

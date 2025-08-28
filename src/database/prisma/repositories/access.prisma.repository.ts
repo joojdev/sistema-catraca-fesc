@@ -50,4 +50,12 @@ export default class AccessPrismaRepository implements AccessRepository {
 
     return access as Access
   }
+
+  async getAll() {
+    return (await prisma.access.findMany()) as Access[]
+  }
+
+  async eraseAll() {
+    await prisma.access.deleteMany()
+  }
 }

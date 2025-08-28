@@ -33,4 +33,12 @@ export default class TagPrismaRepository implements TagRepository {
       },
     })
   }
+
+  async eraseAll() {
+    await prisma.tag.deleteMany()
+  }
+
+  async getAll() {
+    return await prisma.tag.findMany()
+  }
 }

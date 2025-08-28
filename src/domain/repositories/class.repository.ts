@@ -20,4 +20,6 @@ export default interface ClassRepository {
   create(data: CreateClassInput): Promise<Class>
   deleteFromUserId(data: DeleteClassesInput): Promise<void>
   getClassesFromUserIdAndWeekDay(data: GetClassesInput): Promise<Class[]>
+  getAll(): Promise<Class[]>
+  eraseAll(): Promise<void>
 }

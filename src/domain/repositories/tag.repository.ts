@@ -15,4 +15,6 @@ export interface CredentialInput {
 export default interface TagRepository {
   createOrUpdate(data: CreateTagInput): Promise<Tag>
   getByCredential(data: CredentialInput): Promise<Tag | null>
+  eraseAll(): Promise<void>
+  getAll(): Promise<Tag[]>
 }

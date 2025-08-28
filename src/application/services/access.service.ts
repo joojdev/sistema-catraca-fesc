@@ -22,4 +22,12 @@ export default class AccessService implements AccessRepository {
   async getLastAccessFromUserId(data: GetLastAccessInput) {
     return await this.repo.getLastAccessFromUserId(data)
   }
+
+  async getAll() {
+    return await this.repo.getAll()
+  }
+
+  async eraseAll() {
+    await this.repo.eraseAll()
+  }
 }
