@@ -7,7 +7,7 @@ import TagService from '../application/services/tag.service'
 import AccessPrismaRepository from '../database/prisma/repositories/access.prisma.repository'
 import AccessService from '../application/services/access.service'
 import ClassPrismaRepository from '../database/prisma/repositories/class.prisma.repository'
-import ClassService from 'src/application/services/class.service'
+import ClassService from '../application/services/class.service'
 import z from 'zod'
 
 const AdminActionSchema = z.object({
