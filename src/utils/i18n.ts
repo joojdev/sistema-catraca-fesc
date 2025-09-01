@@ -1,4 +1,6 @@
-// A catraca não suporta acentuação e nem pontuação!
+// O texto na catraca não suporta acentuação e nem pontuação!
+
+// VERSÃO EM INGLÊS
 
 // const text = {
 //   waitSystemIsUpdating: 'WAIT THE SYSTEM IS UPDATING',
@@ -6,6 +8,8 @@
 //   onlyOneAccess: 'ONLY 1 ACCESS PER CLASS',
 //   accessDenied: 'DENIED ACCESS',
 // }
+
+// VERSÃO EM PORTUGUÊS
 
 const text = {
   waitSystemIsUpdating: 'AGUARDE SISTEMA EM ATUALIZACAO',

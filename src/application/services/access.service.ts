@@ -2,7 +2,7 @@ import AccessRepository, {
   CreateAccessInput,
   GetLastAccessInput,
   UpdateAccessStatusInput,
-} from '../../domain/repositories/access.repository'
+} from '@/domain/repositories/access.repository'
 
 export default class AccessService implements AccessRepository {
   constructor(private repo: AccessRepository) {}

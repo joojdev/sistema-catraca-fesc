@@ -1,4 +1,4 @@
-import { Status } from '../enum/status'
+import { Status } from '@/domain/enum/status'
 
 export default class Access {
   constructor(
