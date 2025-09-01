@@ -140,10 +140,9 @@ function rateLimitMiddleware(
  * Tenta várias localizações possíveis para o arquivo admin.html
  */
 function loadAdminPageHTML(): string {
-  return fs.readFileSync(
-    path.join(__dirname, '..', '..', '..', 'utils', 'admin.html'),
-    { encoding: 'utf-8' },
-  )
+  return fs.readFileSync(path.join('.', 'src', 'utils', 'admin.html'), {
+    encoding: 'utf-8',
+  })
 }
 
 const ADMIN_PAGE_HTML = loadAdminPageHTML()
