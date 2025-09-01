@@ -35,13 +35,27 @@ Sendo `senha` a string colocada no campo `ADMIN_TOKEN` no arquivo `.env`
 
 ### Como desenvolver
 
+#### Primeiros passos
 ```bash
 # Instalar dependências
 npm install
+
+# Configurar banco de dados
+npx prisma db push
 
 # Iniciar servidor de conexão com a catraca para desenvolvimento
 npm run dev
 
 # Iniciar serviço de consulta de alunos e envio de presenças da aula para desenvolvimento
 npm run devService
+```
+
+#### Macetes
+```bash
+# Apagar tudo do banco de dados
+npx prisma db push --force-reset
+
+# Criar cenário para teste (5 tags, uma para cada caso de uso)
+# É necessário ter o leitor de RFID em mãos pois o script pedirá 5 credenciais.
+npm run seed
 ```

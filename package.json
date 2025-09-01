@@ -1,12 +1,13 @@
 {
   "name": "sistema_catraca",
   "scripts": {
-    "dev": "tsx watch src/index.js | pino-pretty",
-    "devService": "tsx watch src/fetchTask/index.js | pino-pretty",
+    "dev": "tsx watch src/index.ts | pino-pretty",
+    "devService": "tsx watch src/infrastructure/tasks/fetch/index.ts | pino-pretty",
     "build": "tsc",
     "start": "node dist/index.js",
-    "startService": "node dist/fetchTask/index.js",
-    "lint": "eslint ."
+    "startService": "node dist/infrastructure/tasks/fetch/index.js",
+    "lint": "eslint .",
+    "seed": "tsx src/scripts/seed.ts"
   },
   "author": "joojdev",
   "description": "Software mediador entre a catraca da piscina da FESC e o sistema SGE, também da FESC.",

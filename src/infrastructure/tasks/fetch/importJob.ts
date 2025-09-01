@@ -1,17 +1,15 @@
-import env, { logger } from '../infrastructure/config/env'
+import env, { logger } from '../../config/env'
 import ky from 'ky'
 import { z } from 'zod'
-import { Lockfile } from './Lockfile'
-import { WeekDay } from '../domain/enum/week-day'
-import TagPrismaRepository from '../infrastructure/database/prisma/repositories/tag.prisma.repository'
-import TagService from '../application/services/tag.service'
-import ClassPrismaRepository from '../infrastructure/database/prisma/repositories/class.prisma.repository'
-import ClassService from '../application/services/class.service'
-import AccessPrismaRepository from '../infrastructure/database/prisma/repositories/access.prisma.repository'
-import AccessService from '../application/services/access.service'
-import { Status } from '../domain/enum/status'
-
-const lockfile = new Lockfile('import', 60)
+import { Lockfile } from '../../../utils/Lockfile'
+import { WeekDay } from '../../../domain/enum/week-day'
+import TagPrismaRepository from '../../database/prisma/repositories/tag.prisma.repository'
+import TagService from '../../../application/services/tag.service'
+import ClassPrismaRepository from '../../database/prisma/repositories/class.prisma.repository'
+import ClassService from '../../../application/services/class.service'
+import AccessPrismaRepository from '../../database/prisma/repositories/access.prisma.repository'
+import AccessService from '../../../application/services/access.service'
+import { Status } from '../../../domain/enum/status'
 
 const weekDays: { [key: string]: string } = {
   dom: 'sunday',
@@ -88,6 +86,8 @@ export default async function runImport() {
 
   const accessRepository = new AccessPrismaRepository()
   const accessService = new AccessService(accessRepository)
+
+  const lockfile = new Lockfile('import', 60)
 
   logger.info('Starting import...')
   lockfile.acquire()

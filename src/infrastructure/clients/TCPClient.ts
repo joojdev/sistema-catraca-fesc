@@ -38,6 +38,10 @@ export default class TCPClient extends EventEmitter {
   // Instância ativa do socket; null quando desconectado
   private socket: net.Socket | null = null
 
+  /**
+   * @param ip   Endereço IP
+   * @param port Porta TCP
+   */
   constructor(
     private ip: string,
     private port: number,

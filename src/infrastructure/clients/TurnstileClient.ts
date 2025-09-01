@@ -12,7 +12,7 @@
 
 import TCPClient from './TCPClient'
 import { EventEmitter } from 'node:events'
-import text from './utils/i18n'
+import text from '../../utils/i18n'
 
 // -------------------- Tipos auxiliares ---------------------------------------
 

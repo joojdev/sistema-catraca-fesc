@@ -1,4 +1,6 @@
-import TurnstileClient, { Message } from './TurnstileClient'
+import TurnstileClient, {
+  Message,
+} from './infrastructure/clients/TurnstileClient'
 import env, { logger } from './infrastructure/config/env'
 import { Lockfile } from './utils/Lockfile'
 import text from './utils/i18n'
@@ -190,7 +192,7 @@ class TurnstileOrchestrator {
       )
     }
 
-    return this.turnstile.denyAccess(message.index, text.outOfHour)
+    return this.turnstile.denyAccess(message.index, text.outOfSchedule)
   }
 
   async handleTurn(_eventCode: number, _message: Message, currentDate: Date) {
