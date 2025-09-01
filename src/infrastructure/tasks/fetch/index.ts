@@ -9,14 +9,144 @@ import AccessService from '@/application/services/access.service'
 import ClassPrismaRepository from '@/infrastructure/database/prisma/repositories/class.prisma.repository'
 import ClassService from '@/application/services/class.service'
 import { z } from 'zod'
+import fs from 'fs'
+import path from 'path'
 
 /**
  * Schema de validação para ações administrativas
- * Todas as rotas administrativas requerem um token válido
  */
 const AdminActionSchema = z.object({
   Token: z.string(), // Token de autenticação para operações admin
 })
+
+/**
+ * Schema para verificação de token
+ */
+const TokenVerificationSchema = z.object({
+  Token: z.string(),
+})
+
+/**
+ * Interface para controle de rate limiting por IP
+ */
+interface RateLimitEntry {
+  count: number
+  resetTime: number
+}
+
+/**
+ * Map para controlar rate limiting por IP
+ * Key: IP address, Value: RateLimitEntry
+ */
+const rateLimitMap = new Map<string, RateLimitEntry>()
+
+/**
+ * Limpa entradas expiradas do rate limit a cada 5 minutos
+ */
+setInterval(
+  () => {
+    const now = Date.now()
+    for (const [ip, entry] of rateLimitMap.entries()) {
+      if (now > entry.resetTime) {
+        rateLimitMap.delete(ip)
+      }
+    }
+    logger.debug(
+      `Rate limit cleanup: ${rateLimitMap.size} IPs sendo monitorados`,
+    )
+  },
+  5 * 60 * 1000,
+) // 5 minutos
+
+/**
+ * Middleware de rate limiting
+ * Limita a 3 requisições por hora por IP para rotas protegidas
+ */
+function rateLimitMiddleware(
+  request: express.Request,
+  response: express.Response,
+  next: express.NextFunction,
+) {
+  const ip = request.ip || request.connection.remoteAddress || 'unknown'
+  const now = Date.now()
+  const oneHour = 60 * 60 * 1000 // 1 hora em millisegundos
+  const maxRequests = 3
+
+  // Obtém ou cria entrada para este IP
+  let entry = rateLimitMap.get(ip)
+
+  if (!entry || now > entry.resetTime) {
+    // Primeira requisição ou janela de tempo expirada
+    entry = {
+      count: 1,
+      resetTime: now + oneHour,
+    }
+    rateLimitMap.set(ip, entry)
+
+    logger.debug(
+      {
+        ip,
+        count: entry.count,
+        resetIn: Math.round((entry.resetTime - now) / 1000 / 60),
+      },
+      'Rate limit: Nova janela iniciada',
+    )
+
+    return next()
+  }
+
+  if (entry.count >= maxRequests) {
+    const resetIn = Math.round((entry.resetTime - now) / 1000 / 60)
+
+    logger.warn(
+      {
+        ip,
+        count: entry.count,
+        maxRequests,
+        resetIn,
+        path: request.path,
+      },
+      'Rate limit excedido',
+    )
+
+    return response.status(429).json({
+      success: false,
+      message: 'Muitas tentativas. Tente novamente em algumas horas.',
+      retryAfter: resetIn,
+      limit: maxRequests,
+      current: entry.count,
+    })
+  }
+
+  // Incrementa contador
+  entry.count++
+  rateLimitMap.set(ip, entry)
+
+  logger.debug(
+    {
+      ip,
+      count: entry.count,
+      remaining: maxRequests - entry.count,
+      resetIn: Math.round((entry.resetTime - now) / 1000 / 60),
+    },
+    'Rate limit: Requisição contabilizada',
+  )
+
+  next()
+}
+
+/**
+ * HTML da página de administração
+ * Tenta várias localizações possíveis para o arquivo admin.html
+ */
+function loadAdminPageHTML(): string {
+  return fs.readFileSync(
+    path.join(__dirname, '..', '..', '..', 'utils', 'admin.html'),
+    { encoding: 'utf-8' },
+  )
+}
+
+const ADMIN_PAGE_HTML = loadAdminPageHTML()
 
 /**
  * Função principal da aplicação
@@ -63,18 +193,56 @@ async function main(): Promise<void> {
 
   const app = express()
 
+  // Middleware para capturar IP real (atrás de proxies)
+  app.set('trust proxy', true)
+
   // Middleware para parsing de JSON
   app.use(express.json({ limit: '10mb' })) // Limite de 10MB para requisições
 
-  // ===== MIDDLEWARE DE AUTENTICAÇÃO =====
+  // ===== ROTAS PÚBLICAS (SEM AUTENTICAÇÃO) =====
 
   /**
-   * Middleware de segurança que valida token em todas as rotas
-   * Verifica se o token enviado no body da requisição é válido
+   * GET /admin
+   * Serve a página de administração (interface web)
+   * Esta rota não requer autenticação pois a própria página gerencia isso
    */
-  app.use((request, response, next) => {
-    // Valida estrutura da requisição
-    const parsed = AdminActionSchema.safeParse(request.body)
+  app.get('/admin', (request, response) => {
+    logger.info({ ip: request.ip }, 'Acesso à página administrativa')
+    response.setHeader('Content-Type', 'text/html; charset=utf-8')
+    response.send(ADMIN_PAGE_HTML)
+  })
+
+  /**
+   * GET /
+   * Redireciona a raiz para a página administrativa
+   */
+  app.get('/', (request, response) => {
+    response.redirect('/admin')
+  })
+
+  /**
+   * GET /health
+   * Endpoint de health check para monitoramento - SEM RATE LIMIT
+   */
+  app.get('/health', (request, response) => {
+    response.json({
+      status: 'healthy',
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      version: process.env.npm_package_version || 'unknown',
+    })
+  })
+
+  // ===== ROTA DE VERIFICAÇÃO DE TOKEN =====
+
+  /**
+   * POST /verify-token
+   * Verifica se o token fornecido é válido
+   * Permite que a interface web valide o token antes de fazer outras requisições
+   * APLICA RATE LIMITING
+   */
+  app.post('/verify-token', rateLimitMiddleware, (request, response) => {
+    const parsed = TokenVerificationSchema.safeParse(request.body)
 
     if (!parsed.success) {
       logger.warn(
@@ -83,9 +251,65 @@ async function main(): Promise<void> {
           userAgent: request.get('User-Agent'),
           errors: parsed.error.issues,
         },
+        'Verificação de token: estrutura inválida',
+      )
+      return response.status(400).json({
+        success: false,
+        message: 'Token não fornecido',
+        valid: false,
+      })
+    }
+
+    const { Token } = parsed.data
+
+    if (Token !== env.ADMIN_TOKEN) {
+      logger.warn(
+        {
+          ip: request.ip,
+          userAgent: request.get('User-Agent'),
+          providedToken: Token.substring(0, 10) + '...', // Log parcial por segurança
+        },
+        'Verificação de token: token inválido',
+      )
+      return response.json({
+        success: false,
+        message: 'Token inválido',
+        valid: false,
+      })
+    }
+
+    logger.info({ ip: request.ip }, 'Token verificado com sucesso')
+    response.json({
+      success: true,
+      message: 'Token válido',
+      valid: true,
+      timestamp: new Date().toISOString(),
+    })
+  })
+
+  // ===== MIDDLEWARE DE AUTENTICAÇÃO PARA ROTAS PROTEGIDAS =====
+
+  /**
+   * Middleware de segurança que valida token em rotas da API
+   * Aplica-se apenas às rotas protegidas
+   */
+  app.use('/api', rateLimitMiddleware, (request, response, next) => {
+    // Valida estrutura da requisição
+    const parsed = AdminActionSchema.safeParse(request.body)
+
+    if (!parsed.success) {
+      logger.warn(
+        {
+          ip: request.ip,
+          userAgent: request.get('User-Agent'),
+          path: request.path,
+          errors: parsed.error.issues,
+        },
         'Tentativa de acesso sem token válido',
       )
-      return response.status(401).send('Não autorizado!')
+      return response
+        .status(401)
+        .json({ success: false, message: 'Token não fornecido ou inválido' })
     }
 
     const { Token } = parsed.data
@@ -96,26 +320,32 @@ async function main(): Promise<void> {
         {
           ip: request.ip,
           userAgent: request.get('User-Agent'),
+          path: request.path,
           providedToken: Token.substring(0, 10) + '...', // Log parcial por segurança
         },
         'Tentativa de acesso com token inválido',
       )
-      return response.status(401).send('Não autorizado!')
+      return response
+        .status(401)
+        .json({ success: false, message: 'Token administrativo inválido' })
     }
 
     // Token válido - continua para próximo middleware/rota
-    logger.debug({ ip: request.ip }, 'Acesso administrativo autorizado')
+    logger.debug(
+      { ip: request.ip, path: request.path },
+      'Acesso administrativo autorizado',
+    )
     next()
   })
 
-  // ===== ROTAS ADMINISTRATIVAS =====
+  // ===== ROTAS ADMINISTRATIVAS PROTEGIDAS =====
 
   /**
-   * POST /trigger-import
+   * POST /api/trigger-import
    * Dispara importação manual (fora do agendamento)
    * Útil para testes ou sincronizações urgentes
    */
-  app.post('/trigger-import', async (request, response) => {
+  app.post('/api/trigger-import', async (request, response) => {
     logger.info({ ip: request.ip }, 'Importação manual disparada')
 
     runImport()
@@ -138,11 +368,11 @@ async function main(): Promise<void> {
   })
 
   /**
-   * POST /erase-everything
+   * POST /api/erase-everything
    * OPERAÇÃO DESTRUTIVA: Apaga todos os dados do sistema
    * Use com extremo cuidado - não há rollback
    */
-  app.post('/erase-everything', async (request, response) => {
+  app.post('/api/erase-everything', async (request, response) => {
     logger.warn(
       { ip: request.ip },
       'OPERAÇÃO DESTRUTIVA: Limpeza completa do banco solicitada',
@@ -171,11 +401,11 @@ async function main(): Promise<void> {
   })
 
   /**
-   * GET /list-accesses
+   * POST /api/list-accesses
    * Lista todos os registros de acesso
    * Útil para auditoria e monitoramento
    */
-  app.get('/list-accesses', async (request, response) => {
+  app.post('/api/list-accesses', async (request, response) => {
     try {
       const accesses = await accessService.getAll()
 
@@ -204,10 +434,10 @@ async function main(): Promise<void> {
   })
 
   /**
-   * GET /list-classes
+   * POST /api/list-classes
    * Lista todos os horários de aula cadastrados
    */
-  app.get('/list-classes', async (request, response) => {
+  app.post('/api/list-classes', async (request, response) => {
     try {
       const classes = await classService.getAll()
 
@@ -236,10 +466,10 @@ async function main(): Promise<void> {
   })
 
   /**
-   * GET /list-tags
+   * POST /api/list-tags
    * Lista todas as tags/credenciais cadastradas
    */
-  app.get('/list-tags', async (request, response) => {
+  app.post('/api/list-tags', async (request, response) => {
     try {
       const tags = await tagService.getAll()
 
@@ -267,48 +497,16 @@ async function main(): Promise<void> {
     }
   })
 
-  /**
-   * GET /health
-   * Endpoint de health check para monitoramento
-   */
-  app.get('/health', (request, response) => {
-    response.json({
-      status: 'healthy',
-      timestamp: new Date().toISOString(),
-      uptime: process.uptime(),
-      version: process.env.npm_package_version || 'unknown',
-    })
-  })
-
-  // ===== TRATAMENTO DE ERROS GLOBAIS =====
-
-  // Middleware de tratamento de erros não capturados
-  app.use(
-    (error: Error, request: express.Request, response: express.Response) => {
-      logger.error(
-        {
-          err: error,
-          url: request.url,
-          method: request.method,
-          ip: request.ip,
-        },
-        'Erro não tratado na aplicação',
-      )
-
-      response.status(500).json({
-        success: false,
-        message: 'Internal server error',
-        timestamp: new Date().toISOString(),
-      })
-    },
-  )
-
   // ===== INICIALIZAÇÃO DO SERVIDOR =====
 
   const PORT = env.PORT || 3000
 
   app.listen(PORT, () => {
     logger.info({ port: PORT }, 'Servidor administrativo iniciado')
+    logger.info(
+      `Página administrativa disponível em: http://localhost:${PORT}/admin`,
+    )
+    logger.info('Rate limiting configurado: 3 requisições por hora por IP')
   })
 
   // ===== CONFIGURAÇÃO DE SHUTDOWN GRACIOSO =====
@@ -324,10 +522,8 @@ async function main(): Promise<void> {
     )
 
     try {
-      // Aqui você pode adicionar cleanup adicional se necessário:
-      // - Fechar conexões de banco
-      // - Finalizar jobs em andamento
-      // - Liberar recursos
+      // Limpa rate limit map
+      rateLimitMap.clear()
 
       // Cancela jobs agendados
       schedule.gracefulShutdown()

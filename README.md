@@ -33,6 +33,8 @@ Todas essas rotas só podem ser acessadas com o método GET e o corpo do request
 ```
 Sendo `senha` a string colocada no campo `ADMIN_TOKEN` no arquivo `.env`
 
+Página do administrador disponível no endpoint /admin
+
 ### Como desenvolver
 
 #### Primeiros passos
