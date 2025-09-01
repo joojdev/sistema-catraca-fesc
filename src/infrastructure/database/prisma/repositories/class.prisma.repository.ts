@@ -2,9 +2,9 @@ import ClassRepository, {
   CreateClassInput,
   DeleteClassesInput,
   GetClassesInput,
-} from '../../../domain/repositories/class.repository'
+} from '../../../../domain/repositories/class.repository'
 import { prisma } from '..'
-import Class from '../../../domain/entities/class.entity'
+import Class from '../../../../domain/entities/class.entity'
 
 export default class ClassPrismaRepository implements ClassRepository {
   async create(data: CreateClassInput) {

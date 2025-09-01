@@ -1,7 +1,7 @@
 import TagRepository, {
   CreateTagInput,
   CredentialInput,
-} from '../../../domain/repositories/tag.repository'
+} from '../../../../domain/repositories/tag.repository'
 import { prisma } from '..'
 
 export default class TagPrismaRepository implements TagRepository {

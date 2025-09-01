@@ -1,6 +1,6 @@
 import { join } from 'path'
 import { existsSync, statSync, unlinkSync, writeFileSync } from 'fs'
-import { logger } from '../env'
+import { logger } from '../infrastructure/config/env'
 
 export class Lockfile {
   private readonly filePath: string
