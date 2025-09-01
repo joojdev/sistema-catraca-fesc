@@ -292,7 +292,7 @@ async function main(): Promise<void> {
    * Middleware de segurança que valida token em rotas da API
    * Aplica-se apenas às rotas protegidas
    */
-  app.use('/api', rateLimitMiddleware, (request, response, next) => {
+  app.use('/api', (request, response, next) => {
     // Valida estrutura da requisição
     const parsed = AdminActionSchema.safeParse(request.body)
 
