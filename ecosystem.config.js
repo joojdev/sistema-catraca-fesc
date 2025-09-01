@@ -9,7 +9,7 @@ module.exports = {
     {
       name: 'Import',
       script: 'node',
-      args: 'dist/fetchTask/index.js',
+      args: 'dist/infrastructure/tasks/fetch/index.js',
       watch: false,
     },
   ],
