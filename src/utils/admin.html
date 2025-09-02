@@ -361,11 +361,6 @@
         </div>
 
         <div class="auth-section">
-            <div class="rate-limit-info">
-                <strong>⚠️ Limite de Requisições</strong>
-                Este sistema tem limite de 3 operações por hora por IP para segurança.
-            </div>
-            
             <div class="form-group">
                 <label for="adminToken">Token Administrativo:</label>
                 <input type="password" id="adminToken" placeholder="Insira o token de acesso" />
@@ -479,6 +474,7 @@
                         
                         const timeLeft = Math.round((session.expiry - Date.now()) / 1000 / 60);
                         showMessage(`🔓 Sessão restaurada! Expira em ${timeLeft} minutos.`, 'success');
+                        addLogoutButton();
                         return;
                     } else {
                         // Sessão expirou
