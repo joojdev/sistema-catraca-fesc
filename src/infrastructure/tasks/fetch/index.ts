@@ -70,7 +70,7 @@ function rateLimitMiddleware(
   const ip = request.ip || request.connection.remoteAddress || 'unknown'
   const now = Date.now()
   const oneHour = 60 * 60 * 1000 // 1 hora em millisegundos
-  const maxRequests = 3
+  const maxRequests = 5
 
   // Obtém ou cria entrada para este IP
   let entry = rateLimitMap.get(ip)
